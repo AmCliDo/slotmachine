@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pi Slotmaschine</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>🎰 Raspberry Pi Slotmaschine</h1>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <div>
+        <div>Aktuelles Guthaben</div>
+        <div id="balance" class="stat">—</div>
+      </div>
+      <div>
+        <div>Letzter Spin</div>
+        <div id="spin" class="spin">– – –</div>
+        <div id="win" class="ok" style="display:none;">GEWINN! 🎉</div>
+      </div>
+    </div>
+    <div id="event" style="margin-top:.6rem;color:#555;">&nbsp;</div>
+  </div>
+
+  <div class="card">
+    <h3>Test-Buttons (optional)</h3>
+    <div class="row">
+      <button class="btn" onclick="fetch('/add', {method:'POST'}).then(r=>r.json()).then(update)">+1 Guthaben</button>
+      <button class="btn" onclick="fetch('/play', {method:'POST'}).then(r=>r.json()).then(update)">Spielen (kostet 1)</button>
+    </div>
+    <p style="margin:.6rem 0 0;color:#666;">Die physischen Taster lösen dieselben Aktionen aus.</p>
+  </div>
+
+  <footer>
+    <div>Verkabelung: BTN_ADD an <code>GPIO17</code> (Pin 11), BTN_PLAY an <code>GPIO27</code> (Pin 13); andere Seite je Taster an <code>GND</code>.</div>
+  </footer>
+
+  <script>
+  function update(data){
+    document.getElementById('balance').textContent = data.balance;
+    document.getElementById('spin').textContent = data.last_spin.join(' ');
+    document.getElementById('event').textContent = data.last_event;
+    const win = document.getElementById('win');
+    win.style.display = data.win ? 'block' : 'none';
+  }
+  async function refresh(){
+    const r = await fetch('/state');
+    const data = await r.json();
+    update(data);
+  }
+  setInterval(refresh, 600);
+  refresh();
+  </script>
+</body>
+</html>

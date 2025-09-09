@@ -1,96 +1,120 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="de">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pi Slotmaschine</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <style>
-    .spin { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .btn[disabled] { opacity: .6; cursor: not-allowed; }
-  </style>
-</head>
-<body>
-  <header>
-    <h1>🎰 Raspberry Pi Slotmaschine</h1>
-  </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pi Slotmaschine</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+    <style>
+      .spin {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      }
+      .btn[disabled] {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>🎰 Raspberry Pi Slotmaschine</h1>
+    </header>
 
-  <div class="card">
-    <div class="row">
-      <div>
-        <div>Aktuelles Guthaben</div>
-        <div id="balance" class="stat">—</div>
+    <div class="card">
+      <div class="row">
+        <div>
+          <div>Aktuelles Guthaben</div>
+          <div id="balance" class="stat">—</div>
+        </div>
+        <div>
+          <div>Letzter Spin</div>
+          <div id="spin" class="spin">– – –</div>
+          <div id="win" class="ok" style="display: none">GEWINN! 🎉</div>
+        </div>
       </div>
-      <div>
-        <div>Letzter Spin</div>
-        <div id="spin" class="spin">– – –</div>
-        <div id="win" class="ok" style="display:none;">GEWINN! 🎉</div>
+      <div id="event" style="margin-top: 0.6rem; color: #555">&nbsp;</div>
+    </div>
+
+    <div class="card">
+      <h3>Test-Buttons (optional)</h3>
+      <div class="row">
+        <button
+          class="btn"
+          onclick="fetch('/add', {method:'POST'}).then(r=>r.json()).then(update)"
+        >
+          +1 Guthaben
+        </button>
+        <button id="playBtn" class="btn" onclick="startSpin()">
+          Spielen (kostet {{ cost_per_play }} Credit{{ "s" if cost_per_play != 1
+          else "" }})
+        </button>
       </div>
+      <p style="margin: 0.6rem 0 0; color: #666">
+        Die physischen Taster lösen dieselben Aktionen aus.
+      </p>
     </div>
-    <div id="event" style="margin-top:.6rem;color:#555;">&nbsp;</div>
-  </div>
 
-  <div class="card">
-    <h3>Test-Buttons (optional)</h3>
-    <div class="row">
-      <button class="btn" onclick="fetch('/add', {method:'POST'}).then(r=>r.json()).then(update)">+1 Guthaben</button>
-      <button id="playBtn" class="btn" onclick="startSpin()">Spielen (kostet 1)</button>
-    </div>
-    <p style="margin:.6rem 0 0;color:#666;">Die physischen Taster lösen dieselben Aktionen aus.</p>
-  </div>
+    <script>
+      let spinInterval = null;
 
-  <script>
-  let spinInterval = null;
+      function animateSpin() {
+        const nums = [
+          Math.floor(Math.random() * 9) + 1,
+          Math.floor(Math.random() * 9) + 1,
+          Math.floor(Math.random() * 9) + 1,
+        ];
+        document.getElementById("spin").textContent = nums.join(" ");
+      }
 
-  function animateSpin() {
-    const nums = [
-      Math.floor(Math.random() * 9) + 1,
-      Math.floor(Math.random() * 9) + 1,
-      Math.floor(Math.random() * 9) + 1
-    ];
-    document.getElementById('spin').textContent = nums.join(' ');
-  }
+      // Web-Button „Spielen“
+      function startSpin() {
+        const btn = document.getElementById("playBtn");
+        btn.disabled = true;
 
-  // Web-Button „Spielen“
-  function startSpin() {
-    const btn = document.getElementById('playBtn');
-    btn.disabled = true;
+        // Sofort mit Animation starten
+        if (!spinInterval) spinInterval = setInterval(animateSpin, 100);
 
-    // Sofort mit Animation starten
-    if (!spinInterval) spinInterval = setInterval(animateSpin, 100);
+        fetch("/play", { method: "POST" })
+          .then((r) => r.json())
+          .then((data) => update(data))
+          .finally(() => {
+            btn.disabled = false;
+          });
+      }
 
-    fetch('/play', {method:'POST'})
-      .then(r => r.json())
-      .then(data => update(data))
-      .finally(() => { btn.disabled = false; });
-  }
+      // Gemeinsames Update (für Polling & Play-Response)
+      function update(data) {
+        document.getElementById("balance").textContent = data.balance;
+        document.getElementById("event").textContent = data.last_event;
 
-  // Gemeinsames Update (für Polling & Play-Response)
-  function update(data){
-    document.getElementById('balance').textContent = data.balance;
-    document.getElementById('event').textContent   = data.last_event;
+        // Wenn der Server „spinning“ meldet (auch bei GPIO-Taster):
+        if (data.spinning) {
+          if (!spinInterval) spinInterval = setInterval(animateSpin, 100);
+        } else {
+          // Ergebnis ist da -> Animation stoppen und finale Zahlen zeigen
+          if (spinInterval) {
+            clearInterval(spinInterval);
+            spinInterval = null;
+          }
+          document.getElementById("spin").textContent =
+            data.last_spin.join(" ");
+        }
 
-    // Wenn der Server „spinning“ meldet (auch bei GPIO-Taster):
-    if (data.spinning) {
-      if (!spinInterval) spinInterval = setInterval(animateSpin, 100);
-    } else {
-      // Ergebnis ist da -> Animation stoppen und finale Zahlen zeigen
-      if (spinInterval) { clearInterval(spinInterval); spinInterval = null; }
-      document.getElementById('spin').textContent = data.last_spin.join(' ');
-    }
+        const win = document.getElementById("win");
+        win.style.display = data.win ? "block" : "none";
+      }
 
-    const win = document.getElementById('win');
-    win.style.display = data.win ? 'block' : 'none';
-  }
-
-  // Polling – erkennt auch GPIO-gestartete Runden
-  async function refresh(){
-    const r = await fetch('/state');
-    const data = await r.json();
-    update(data);
-  }
-  setInterval(refresh, 300); // schnelleres Polling für smoothere Animation
-  refresh();
-  </script>
-</body>
+      // Polling – erkennt auch GPIO-gestartete Runden
+      async function refresh() {
+        const r = await fetch("/state");
+        const data = await r.json();
+        update(data);
+      }
+      setInterval(refresh, 300); // schnelleres Polling für smoothere Animation
+      refresh();
+    </script>
+  </body>
 </html>

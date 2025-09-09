@@ -3,25 +3,21 @@
 import json, threading, time, random
 from pathlib import Path
 from flask import Flask, jsonify, render_template
-
-# ---- GPIO ----
-try:
-    from gpiozero import Button, LED, Buzzer
-    GPIO_AVAILABLE = True
-except Exception:
-    GPIO_AVAILABLE = False
+import RPi.GPIO as GPIO
 
 # ---- Konfiguration / Pins ----
-BASE_DIR   = Path(__file__).resolve().parent
-DATA_FILE  = BASE_DIR / "slot_state.json"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_FILE = BASE_DIR / "slot_state.json"
 
-BTN_ADD_PIN   = 17   # GPIO17 (Pin 11)
-BTN_PLAY_PIN  = 27   # GPIO27 (Pin 13)
-BOUNCE_SECS   = 0.05
+BTN_ADD_PIN = 17    # GPIO17 (Pin 11)
+BTN_PLAY_PIN = 27   # GPIO27 (Pin 13)
+LED_GREEN_PIN = 22  # GPIO22 (Pin 15)
+LED_RED_PIN = 23    # GPIO23 (Pin 16)
+BUZZER_PIN = 18     # GPIO18 (Pin 12)
+BOUNCE_SECS = 0.1
 
-LED_GREEN_PIN = 22   # GPIO22 (Pin 15)
-LED_RED_PIN   = 23   # GPIO23 (Pin 16)
-BUZZER_PIN    = 18   # GPIO18 (Pin 12)
+COST_PER_PLAY = 5
+WIN_PROBABILITY = 0.2
 
 # ---- Zustand ----
 state_lock = threading.Lock()
@@ -33,7 +29,10 @@ state = {
     "spinning": False
 }
 
-# ---- Funktionen für State ----
+# ---- Geräte ----
+buzzer = None
+
+# ---- Helper-Funktionen ----
 def save_state():
     try:
         DATA_FILE.write_text(json.dumps(state), encoding="utf-8")
@@ -55,73 +54,106 @@ def load_state():
         except Exception:
             pass
 
-# ---- Spiellogik ----
+def blink_leds_alternating(pin1, pin2, times=5, interval=0.2):
+    for _ in range(times):
+        GPIO.output(pin1, GPIO.HIGH)
+        GPIO.output(pin2, GPIO.LOW)
+        time.sleep(interval)
+        GPIO.output(pin1, GPIO.LOW)
+        GPIO.output(pin2, GPIO.HIGH)
+        time.sleep(interval)
+    GPIO.output(pin1, GPIO.LOW)
+    GPIO.output(pin2, GPIO.LOW)
+
+# ---- Buzzer-Musik ----
+def play_win_tone():
+    if not buzzer:
+        return
+    NOTES = {
+        'REST': 0, 'C5': 523, 'E5': 659, 'G5': 784, 'C6': 1047
+    }
+    melody = [
+        ('C5', 8), ('E5', 8), ('G5', 8), ('C6', 4),
+        ('REST', 8),
+        ('G5', 8), ('C6', 4)
+    ]
+    tempo = 200
+    wholenote = (60000 * 4) / tempo
+    for note, duration_fraction in melody:
+        duration_ms = wholenote / abs(duration_fraction)
+        if duration_fraction < 0:
+            duration_ms *= 1.5
+        frequency = NOTES.get(note, 0)
+        if frequency == 0:
+            time.sleep(duration_ms / 1000)
+        else:
+            buzzer.ChangeFrequency(frequency)
+            buzzer.ChangeDutyCycle(20)
+            time.sleep(duration_ms * 0.9 / 1000)
+            buzzer.ChangeDutyCycle(0)
+            time.sleep(duration_ms * 0.1 / 1000)
+
+def play_lose_tone():
+    if not buzzer:
+        return
+    buzzer.ChangeFrequency(200)
+    buzzer.ChangeDutyCycle(10)
+    time.sleep(0.3)
+    buzzer.ChangeDutyCycle(0)
+
+# ---- Spielmechanik ----
 def add_credit(source="button"):
     with state_lock:
         state["balance"] += 1
         state["last_event"] = f"{time.strftime('%H:%M:%S')} – Guthaben +1 ({source})"
         save_state()
 
-def play_win_tone():
-    if not buzzer:
-        return
-    for _ in range(3):     # dreimal kurz piepen
-        buzzer.on()
-        time.sleep(0.12)
-        buzzer.off()
-        time.sleep(0.08)
-
-def play_lose_tone():
-    if not buzzer:
-        return
-    buzzer.on()
-    time.sleep(0.25)       # längerer Piepton
-    buzzer.off()
+def try_play():
+    with state_lock:
+        if state["spinning"]:
+            return
+    play_once(source="GPIO")
 
 def play_once(source="button"):
-    # 1) Guthaben prüfen + „Drehphase“ markieren
     with state_lock:
-        if state["balance"] < 1:
+        if state["spinning"]:
+            return state["last_spin"], state["balance"], False
+        if state["balance"] < COST_PER_PLAY:
             state["last_event"] = f"{time.strftime('%H:%M:%S')} – Nicht genug Guthaben zum Spielen"
             save_state()
             return state["last_spin"], state["balance"], False
         state["spinning"] = True
         save_state()
 
-    # 2) Startfeedback: LEDs 2 s blinken (außerhalb des Locks!)
-    if led_green and led_red:
-        led_green.blink(on_time=0.2, off_time=0.2, background=True)
-        led_red.blink(on_time=0.2, off_time=0.2, background=True)
+    blink_leds_alternating(LED_GREEN_PIN, LED_RED_PIN, times=5, interval=0.2)
+    time.sleep(0.5)
 
-    time.sleep(2.0)  # sichtbare „Drehzeit“ für Web-Animation
-
-    # 3) Ergebnis berechnen & Zustand speichern
     with state_lock:
-        state["balance"] -= 1
-        a, b, c = (random.randint(1, 9) for _ in range(3))
-        win = (a == b == c)
+        state["balance"] -= COST_PER_PLAY
+        if random.random() < WIN_PROBABILITY:
+            a = b = c = random.randint(1, 9)
+            win = True
+        else:
+            while True:
+                a, b, c = (random.randint(1, 9) for _ in range(3))
+                if not (a == b == c):
+                    break
+            win = False
         if win:
             state["balance"] *= 2
-
         state["last_spin"] = [a, b, c]
         state["win"] = win
         evt = "GEWINN! Guthaben verdoppelt" if win else "kein Gewinn"
         state["last_event"] = f"{time.strftime('%H:%M:%S')} – Spin {a}-{b}-{c}, {evt} ({source})"
         state["spinning"] = False
         save_state()
-
         last_spin = state["last_spin"]
-        balance   = state["balance"]
+        balance = state["balance"]
 
-    # 4) LEDs final setzen (außerhalb des Locks)
-    if led_green and led_red:
-        led_green.off(); led_red.off()
-        if win:
-            led_green.on()
-        else:
-            led_red.on()
+    GPIO.output(LED_GREEN_PIN, GPIO.LOW)
+    GPIO.output(LED_RED_PIN, GPIO.LOW)
+    GPIO.output(LED_GREEN_PIN if win else LED_RED_PIN, GPIO.HIGH)
 
-    # 5) Sound abspielen (Buzzer)
     if win:
         play_win_tone()
     else:
@@ -130,34 +162,29 @@ def play_once(source="button"):
     return last_spin, balance, win
 
 # ---- GPIO Setup ----
-btn_add = btn_play = None
-led_green = led_red = None
-buzzer = None
-
 def setup_gpio():
-    global btn_add, btn_play, led_green, led_red, buzzer
-    if not GPIO_AVAILABLE:
-        print("GPIO nicht verfügbar – laufe ohne Taster/LEDs/Buzzer.")
-        return
-    try:
-        btn_add  = Button(BTN_ADD_PIN,  pull_up=True, bounce_time=BOUNCE_SECS)
-        btn_play = Button(BTN_PLAY_PIN, pull_up=True, bounce_time=BOUNCE_SECS)
-        led_green = LED(LED_GREEN_PIN)
-        led_red   = LED(LED_RED_PIN)
-        buzzer    = Buzzer(BUZZER_PIN)
-        led_green.off(); led_red.off(); buzzer.off()
-
-        btn_add.when_pressed  = lambda: add_credit(source="GPIO")
-        btn_play.when_pressed = lambda: play_once(source="GPIO")
-    except Exception as e:
-        print("GPIO-Setup fehlgeschlagen:", e)
+    global buzzer
+    GPIO.setwarnings(False)
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(BTN_ADD_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(BTN_PLAY_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.setup(LED_GREEN_PIN, GPIO.OUT)
+    GPIO.setup(LED_RED_PIN, GPIO.OUT)
+    GPIO.output(LED_GREEN_PIN, GPIO.LOW)
+    GPIO.output(LED_RED_PIN, GPIO.LOW)
+    GPIO.setup(BUZZER_PIN, GPIO.OUT)
+    buzzer_pwm = GPIO.PWM(BUZZER_PIN, 440)
+    buzzer_pwm.start(0)
+    buzzer = buzzer_pwm
+    GPIO.add_event_detect(BTN_ADD_PIN, GPIO.FALLING, callback=lambda x: add_credit("GPIO"), bouncetime=int(BOUNCE_SECS * 1000))
+    GPIO.add_event_detect(BTN_PLAY_PIN, GPIO.FALLING, callback=lambda x: try_play(), bouncetime=int(BOUNCE_SECS * 1000))
 
 # ---- Flask ----
 app = Flask(__name__)
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", cost_per_play=COST_PER_PLAY)
 
 @app.route("/state")
 def get_state():
@@ -175,6 +202,17 @@ def api_play():
     play_once(source="web")
     with state_lock:
         return jsonify(state)
+
+@app.route("/test/buzzer")
+def test_buzzer():
+    if buzzer:
+        buzzer.ChangeFrequency(440)
+        buzzer.ChangeDutyCycle(20)
+        time.sleep(0.5)
+        buzzer.ChangeDutyCycle(0)
+        return "Buzzer getestet (0.5s Ton)"
+    else:
+        return "Buzzer nicht verfügbar"
 
 if __name__ == "__main__":
     load_state()

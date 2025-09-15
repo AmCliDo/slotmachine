@@ -1,6 +1,7 @@
 # Raspberry Pi 4 – Mini-Slotmaschine mit 2 physischen Tastern (Steckbrett) und Weboberfläche via Flask
 
 ## Funktionen
+
 - **Taster 1 (BTN_ADD, GPIO17 / Pin 11):** +1 Guthaben je Tastendruck
 - **Taster 2 (BTN_PLAY, GPIO27 / Pin 13):** Startet das Spiel
   - kostet 1 Guthaben
@@ -19,6 +20,7 @@
 ---
 
 ## GPIO-Belegung (BCM)
+
 - **BTN_ADD** = GPIO17 (Board-Pin 11)
 - **BTN_PLAY** = GPIO27 (Board-Pin 13)
 - **LED_GRÜN** = GPIO22 (Board-Pin 15)
@@ -27,7 +29,9 @@
 ---
 
 ## Verkabelung
+
 - **Taster:**
+
   - eine Seite an **GND**
   - andere Seite an den jeweiligen GPIO-Pin (17 bzw. 27)
   - interne Pull-Ups aktiv → Signal ist HIGH, beim Drücken LOW
@@ -39,6 +43,7 @@
 ---
 
 ## Abhängigkeiten installieren (Raspberry Pi OS)
+
 ```bash
 sudo apt update
 sudo apt install -y python3-flask python3-gpiozero
@@ -47,23 +52,17 @@ sudo apt install -y python3-flask python3-gpiozero
 ---
 
 ## Starten
+
 ```bash
 python3 app.py
 ```
 
 Weboberfläche im Browser öffnen:
+
 ```
 http://<IP-des-Pi>:5000
 ```
 
 ## Schema
 
-  [GPIO22] ─── [Widerstand 220Ω] ───►|───┐
-                                     | LED grün
-                                   ──┘
-                                   [GND]
-
-  [GPIO23] ─── [Widerstand 220Ω] ───►|───┐
-                                     | LED rot
-                                   ──┘
-                                   [GND]
+![Schema des Projektes](assets/circuit_2.png)

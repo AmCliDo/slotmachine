@@ -8,7 +8,7 @@ Dieses Projekt zeigt, wie man mit einem Raspberry Pi 4, zwei physischen Tastern,
 
 - **Taster 1 (BTN_ADD, GPIO17 / Pin 11):** +1 Guthaben je Tastendruck
 - **Taster 2 (BTN_PLAY, GPIO27 / Pin 13):** Startet das Spiel
-  - kostet 1 Guthaben
+  - kostet 5 Guthaben
   - generiert drei Zufallszahlen (1–9)
   - sind alle drei identisch → Restguthaben wird verdoppelt
 - **LED-Anzeige:**
@@ -29,6 +29,34 @@ Dieses Projekt zeigt, wie man mit einem Raspberry Pi 4, zwei physischen Tastern,
 - **BTN_PLAY** = GPIO27 (Board-Pin 13)
 - **LED_GRÜN** = GPIO22 (Board-Pin 15)
 - **LED_ROT** = GPIO23 (Board-Pin 16)
+
+---
+
+## Konfiguration und Parameter (aus `app.py`)
+
+Im oberen Bereich der `app.py` werden zentrale GPIO-Zuweisungen und Spielparameter definiert. Diese können bei Bedarf angepasst werden:
+
+### GPIO-Zuweisungen (BCM-Nummerierung)
+
+| Zweck             | GPIO | Pin am Raspberry Pi |
+| ----------------- | ---- | ------------------- |
+| Taster „+1“       | 17   | Pin 11              |
+| Taster „Start“    | 27   | Pin 13              |
+| Grüne LED         | 22   | Pin 15              |
+| Rote LED          | 23   | Pin 16              |
+| Buzzer (optional) | 18   | Pin 12              |
+
+> Die GPIO-Nummern entsprechen der **BCM-Nummerierung** (nicht der physischen Pin-Reihenfolge).
+
+### Spielparameter
+
+| Variable          | Bedeutung                                   | Standardwert |
+| ----------------- | ------------------------------------------- | ------------ |
+| `COST_PER_PLAY`   | Kosten pro Spielrunde in Guthabeneinheiten  | 5            |
+| `WIN_PROBABILITY` | Gewinnwahrscheinlichkeit (zwischen 0 und 1) | 0.2 (20 %)   |
+| `BOUNCE_SECS`     | Entprellzeit für die Taster in Sekunden     | 0.1          |
+
+Diese Parameter können angepasst werden, um das Spielverhalten zu ändern – z. B. durch Erhöhung der Kosten oder Verringerung der Gewinnchance.
 
 ---
 
@@ -65,16 +93,6 @@ Weboberfläche im Browser öffnen:
 
 ```
 http://<IP-des-Pi>:5000
-```
-
----
-
-## Testen
-
-Mit dem Skript `test.py` lassen sich einzelne Funktionen der Slotmaschine separat testen:
-
-```bash
-python3 test.py
 ```
 
 ---

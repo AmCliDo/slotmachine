@@ -1,5 +1,9 @@
 # Raspberry Pi 4 – Mini-Slotmaschine mit 2 physischen Tastern (Steckbrett) und Weboberfläche via Flask
 
+## Projektbeschreibung
+
+Dieses Projekt zeigt, wie man mit einem Raspberry Pi 4, zwei physischen Tastern, zwei LEDs und etwas Python-Code eine einfache Slotmaschine bauen kann. Die Kombination aus Hardware und Webtechnologie (Flask) macht es zu einem idealen Lernprojekt für Einsteiger in die Raspberry-Pi-Programmierung und Physical Computing.
+
 ## Funktionen
 
 - **Taster 1 (BTN_ADD, GPIO17 / Pin 11):** +1 Guthaben je Tastendruck
@@ -63,6 +67,56 @@ Weboberfläche im Browser öffnen:
 http://<IP-des-Pi>:5000
 ```
 
+---
+
+## Testen
+
+Mit dem Skript `test.py` lassen sich einzelne Funktionen der Slotmaschine separat testen:
+
+```bash
+python3 test.py
+```
+
+---
+
+## Projektstruktur
+
+```
+slotmachine/
+├── app.py              # Hauptprogramm (Flask + GPIO-Logik)
+├── test.py             # Testskript (z.B. Unit Tests)
+├── slot_state.json     # Speicherung von Guthaben & Spielstatus
+├── static/
+│   └── style.css       # CSS-Styles für die Weboberfläche
+├── templates/
+│   └── index.html      # HTML-Template (Jinja2)
+├── assets/
+│   └── circuit_2.png   # Schaltplan als Bild
+└── README.md           # Diese Anleitung
+```
+
+---
+
 ## Schema
 
 ![Schema des Projektes](assets/circuit_2.png)
+
+---
+
+## Testskript: `test.py`
+
+Mit dem mitgelieferten Skript `test.py` kannst du die LED an GPIO23 (Pin 16) unabhängig vom Hauptprogramm testen. Es lässt die LED im Sekundentakt blinken (1 Sekunde an, 1 Sekunde aus) und dient dazu, die Verkabelung sowie die Funktion der LED zu überprüfen.
+
+### Starten:
+
+```bash
+python3 test.py
+```
+
+---
+
+## Mögliche Probleme
+
+- **Weboberfläche lädt nicht?** → Prüfe, ob der Flask-Server läuft und Port 5000 freigegeben ist.
+- **Keine LED-Reaktion?** → GPIO-Verkabelung & Widerstände überprüfen, Wackelkontakt auf Breadboard testen.
+- **Taster funktioniert nicht?** → GPIO-Pins richtig gesetzt?

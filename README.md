@@ -116,6 +116,8 @@ slotmachine/
 ---
 
 ## Schema
+Achtung: im Schema BTN_PLAY und BTN_ADD GPIO vertauscht!
+Richtig: BTN_PLAY: GPIO 17, BTN_ADD: GPI== 27
 
 ![Schema des Projektes](assets/circuit_2.png)
 

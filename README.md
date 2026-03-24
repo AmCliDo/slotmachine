@@ -6,8 +6,8 @@ Dieses Projekt zeigt, wie man mit einem Raspberry Pi 4, zwei physischen Tastern,
 
 ## Funktionen
 
-- **Taster 1 (BTN_ADD, GPIO17 / Pin 11):** +1 Guthaben je Tastendruck
-- **Taster 2 (BTN_PLAY, GPIO27 / Pin 13):** Startet das Spiel
+- **Taster 1 (BTN_PLAY, GPIO17 / Pin 11):** +1 Guthaben je Tastendruck
+- **Taster 2 (BTN_ADD, GPIO27 / Pin 13):** Startet das Spiel
   - kostet 5 Guthaben
   - generiert drei Zufallszahlen (1–9)
   - sind alle drei identisch → Restguthaben wird verdoppelt
@@ -25,8 +25,8 @@ Dieses Projekt zeigt, wie man mit einem Raspberry Pi 4, zwei physischen Tastern,
 
 ## GPIO-Belegung (BCM)
 
-- **BTN_ADD** = GPIO17 (Board-Pin 11)
-- **BTN_PLAY** = GPIO27 (Board-Pin 13)
+- **BTN_PLAY** = GPIO17 (Board-Pin 11)
+- **BTN_ADD** = GPIO27 (Board-Pin 13)
 - **LED_GRÜN** = GPIO22 (Board-Pin 15)
 - **LED_ROT** = GPIO23 (Board-Pin 16)
 
@@ -40,8 +40,8 @@ Im oberen Bereich der `app.py` werden zentrale GPIO-Zuweisungen und Spielparamet
 
 | Zweck             | GPIO | Pin am Raspberry Pi |
 | ----------------- | ---- | ------------------- |
-| Taster „+1“       | 17   | Pin 11              |
-| Taster „Start“    | 27   | Pin 13              |
+| Taster „Start“    | 17   | Pin 11              |
+| Taster „+1“       | 27   | Pin 13              |
 | Grüne LED         | 22   | Pin 15              |
 | Rote LED          | 23   | Pin 16              |
 | Buzzer (optional) | 18   | Pin 12              |

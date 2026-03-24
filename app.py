@@ -9,8 +9,8 @@ import RPi.GPIO as GPIO
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "slot_state.json"
 
-BTN_ADD_PIN = 17    # GPIO17 (Pin 11)
-BTN_PLAY_PIN = 27   # GPIO27 (Pin 13)
+BTN_PLAY_PIN = 17   # GPIO17 (Pin 11)
+BTN_ADD_PIN = 27    # GPIO27 (Pin 13)
 LED_GREEN_PIN = 22  # GPIO22 (Pin 15)
 LED_RED_PIN = 23    # GPIO23 (Pin 16)
 BUZZER_PIN = 18     # GPIO18 (Pin 12)

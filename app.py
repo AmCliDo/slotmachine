@@ -14,7 +14,7 @@ BTN_ADD_PIN = 27    # GPIO27 (Pin 13)
 LED_GREEN_PIN = 22  # GPIO22 (Pin 15)
 LED_RED_PIN = 23    # GPIO23 (Pin 16)
 BUZZER_PIN = 18     # GPIO18 (Pin 12)
-BOUNCE_SECS = 0.1
+BOUNCE_SECS = 0.3
 
 COST_PER_PLAY = 5
 WIN_PROBABILITY = 0.2
@@ -214,7 +214,13 @@ def test_buzzer():
     else:
         return "Buzzer nicht verfügbar"
 
-if __name__ == "__main__":
-    load_state()
+if __name__ == "__main__": 
+
+#Guthaben immer zurückstzen
+    with state_lock:
+        state["balance"] = 0
+        state["last_event"] = "Systemstart = Guthaben zurückgesetzt"
+        save_state()
+   
     setup_gpio()
     app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)
